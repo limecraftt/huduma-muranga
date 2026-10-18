@@ -56,3 +56,15 @@ export const STATUS_META = {
 }
 
 export const ROLES = { CITIZEN: 'citizen', ADMIN: 'admin' }
+/** Types of crime/incident that can be reported anonymously. */
+export const CRIME_TYPES = [
+  { id: 'theft', label: 'Theft / Robbery' },
+  { id: 'drugs', label: 'Illegal drugs / Illicit brew' },
+  { id: 'violence', label: 'Violence / Gender-based violence' },
+  { id: 'corruption', label: 'Corruption / Bribery' },
+  { id: 'vandalism', label: 'Vandalism of county property' },
+  { id: 'child-safety', label: 'Child abuse / Safety' },
+  { id: 'other', label: 'Other crime' },
+]
+
+export const EMERGENCY_NUMBERS = 'Police emergency: 999 or 112'

@@ -1,12 +1,29 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AuthContext } from './auth'
-import { authService } from '../services/mockApi'
+import { authService } from '../services/authService'
 import { ROLES } from '../data/constants'
 
 /** Wraps the app and shares the logged-in user with every component. */
 export default function AuthProvider({ children }) {
-  // Lazy initial state: read the saved session once, synchronously.
-  const [user, setUser] = useState(() => authService.getSession())
+  const [user, setUser] = useState(null)
+  // True until we know whether a saved session exists (avoids a login-page flash on refresh)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    authService
+      .getCurrentUser()
+      .then((current) => active && setUser(current))
+      .catch(() => active && setUser(null))
+      .finally(() => active && setLoading(false))
+
+    const unsubscribe = authService.onSignedOut(() => active && setUser(null))
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [])
 
   const login = useCallback(async (credentials) => {
     const loggedIn = await authService.login(credentials)
@@ -20,14 +37,14 @@ export default function AuthProvider({ children }) {
     return created
   }, [])
 
-  const logout = useCallback(() => {
-    authService.logout()
+  const logout = useCallback(async () => {
+    await authService.logout()
     setUser(null)
   }, [])
 
   const value = useMemo(
-    () => ({ user, login, register, logout, isAdmin: user?.role === ROLES.ADMIN }),
-    [user, login, register, logout],
+    () => ({ user, loading, login, register, logout, isAdmin: user?.role === ROLES.ADMIN }),
+    [user, loading, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

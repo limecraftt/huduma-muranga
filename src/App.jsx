@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import SignUp from './pages/SignUp'
 import UserDashboard from './pages/UserDashboard'
 import AdminDashboard from './pages/AdminDashboard'
+import ReportCrime from './pages/ReportCrime'
 import NotFound from './pages/NotFound'
 
 /** Route table only: all UI lives in /pages and /components. */
@@ -19,6 +20,7 @@ export default function App() {
             <Route index element={<LandingPage />} />
             <Route path="login" element={<Login />} />
             <Route path="signup" element={<SignUp />} />
+            <Route path="report-crime" element={<ReportCrime />} />
 
             {/* Citizens only */}
             <Route element={<ProtectedRoute />}>

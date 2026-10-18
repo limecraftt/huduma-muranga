@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CheckCircle2, Clock, ClipboardList, Hourglass } from 'lucide-react'
 import RequestDetails from '../components/RequestDetails'
+import TipsPanel from '../components/TipsPanel'
 import { Alert, EmptyState, Spinner, StatCard, StatusBadge } from '../components/ui'
 import { STATUS_FLOW, STATUS_META, SUB_COUNTIES } from '../data/constants'
 import { useRequests } from '../hooks/useRequests'
@@ -113,6 +114,8 @@ export default function AdminDashboard() {
           </table>
         </div>
       )}
+
+      <TipsPanel />
 
       {selected && <RequestDetails request={selected} isAdmin onClose={() => setSelected(null)} onChanged={reload} />}
     </div>

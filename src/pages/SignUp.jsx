@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Lock, Mail, MapPin, UserPlus } from 'lucide-react'
-import { Alert, Button, Field } from '../components/ui'
+import { Alert, Button, Field, Spinner } from '../components/ui'
 import { useAuth } from '../context/auth'
 import { isValidEmail } from '../lib/helpers'
 
@@ -9,13 +9,14 @@ const WARD_SUGGESTIONS = ['Township', 'Kenol', 'Kiharu', 'Ichagaki', 'Mugoiri', 
 
 /** Sign-up asks only for email, ward and password. */
 export default function SignUp() {
-  const { user, isAdmin, register } = useAuth()
+  const { user, isAdmin, loading, register } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', ward: '', password: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  if (loading) return <Spinner />
   if (user && !submitting) return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />
 
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }))

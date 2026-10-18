@@ -17,8 +17,8 @@ export default function Header() {
   const close = () => setOpen(false)
   const dashboardPath = isAdmin ? '/admin' : '/dashboard'
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     close()
     navigate('/')
   }
@@ -30,6 +30,7 @@ export default function Header() {
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
           <NavLink to="/" end className={navClass}>Home</NavLink>
+          <NavLink to="/report-crime" className={navClass}>Report a Crime</NavLink>
           {user && <NavLink to={dashboardPath} className={navClass}>{isAdmin ? 'Admin Dashboard' : 'My Requests'}</NavLink>}
         </nav>
 
@@ -65,6 +66,7 @@ export default function Header() {
         <div className="border-t border-slate-200 bg-white px-4 pb-4 pt-2 md:hidden">
           <nav className="flex flex-col gap-1" aria-label="Mobile">
             <NavLink to="/" end className={navClass} onClick={close}>Home</NavLink>
+            <NavLink to="/report-crime" className={navClass} onClick={close}>Report a Crime</NavLink>
             {user && (
               <NavLink to={dashboardPath} className={navClass} onClick={close}>
                 {isAdmin ? 'Admin Dashboard' : 'My Requests'}

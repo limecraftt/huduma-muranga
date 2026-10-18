@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Lock, LogIn, Mail } from 'lucide-react'
-import { Alert, Button, Field } from '../components/ui'
+import { Alert, Button, Field, Spinner } from '../components/ui'
 import { useAuth } from '../context/auth'
-import { DEMO_ADMIN, DEMO_CITIZEN } from '../data/seed'
 import { isValidEmail } from '../lib/helpers'
 
 /** Login page: centred card with a green title bar (same layout idea as the county portal). */
 export default function Login() {
-  const { user, isAdmin, login } = useAuth()
+  const { user, isAdmin, loading, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [form, setForm] = useState({ email: '', password: '' })
@@ -17,10 +16,10 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   // Already logged in? Skip the form. (`!submitting` lets our own navigate() win.)
+  if (loading) return <Spinner />
   if (user && !submitting) return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />
 
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }))
-  const fillDemo = (account) => setForm({ email: account.email, password: account.password })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -84,15 +83,6 @@ export default function Login() {
               <Link to="/signup" className="font-semibold text-brand-700 hover:underline">Sign up</Link>
             </p>
           </form>
-        </div>
-
-        <div className="mt-5 rounded-lg border border-dashed border-brand-200 bg-white p-4 text-sm">
-          <p className="font-semibold text-slate-800">Demo accounts</p>
-          <p className="mb-3 text-xs text-slate-500">Click to fill the form, then press Login.</p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => fillDemo(DEMO_CITIZEN)}>Citizen</Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => fillDemo(DEMO_ADMIN)}>Admin</Button>
-          </div>
         </div>
       </div>
     </div>

@@ -73,3 +73,18 @@ export const SEED_REQUESTS = [
     history: [received(5), { status: STATUS.IN_PROGRESS, at: daysAgo(4), note: 'Investigating the intake' }],
   },
 ]
+export const SEED_TIPS = [
+  {
+    id: 'tip-1', code: 'TIP-DEMO-2345', crimeType: 'drugs', subCounty: 'Kiharu',
+    location: 'Behind the market, near the river footbridge',
+    description: 'Illicit brew is sold from a shack every evening and attracts rowdy groups.',
+    image: null, status: STATUS.IN_PROGRESS, createdAt: daysAgo(4), updatedAt: daysAgo(2),
+    history: [received(4), { status: STATUS.IN_PROGRESS, at: daysAgo(2), note: 'Forwarded to the area security committee' }],
+  },
+  {
+    id: 'tip-2', code: 'TIP-DEMO-6789', crimeType: 'vandalism', subCounty: 'Maragwa',
+    location: 'Kenol stage, public toilets',
+    description: 'Taps and pipes are being stolen from the public toilets at night.',
+    image: null, status: STATUS.PENDING, createdAt: daysAgo(1), updatedAt: daysAgo(1), history: [received(1)],
+  },
+]

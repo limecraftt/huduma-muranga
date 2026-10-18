@@ -1,23 +1,15 @@
 /**
- * MOCK backend on localStorage.
+ * MOCK backend on localStorage, used for requests and anonymous tips only.
+ * (Authentication already uses Supabase: see authService.js.)
  *
- * Pages never touch localStorage directly: they only call the functions below.
- * To move to Supabase, keep these function names and swap the bodies:
- *
- *   authService.register  -> supabase.auth.signUp({ email, password, options: { data: { ward } } })
- *   authService.login     -> supabase.auth.signInWithPassword({ email, password })
- *   authService.logout    -> supabase.auth.signOut()
- *   requestService.list   -> supabase.from('requests').select('*').order('created_at', { ascending: false })
- *   requestService.create -> upload the photo to Storage, then .insert({...})
- *   requestService.updateStatus -> .update({ status }).eq('id', id)  (admin only, enforced by RLS)
+ * Pages never touch storage directly: they only call the functions below.
+ * These are replaced with Supabase calls in the next steps.
  */
-import { CATEGORIES, ROLES, STATUS } from '../data/constants'
-import { SEED_REQUESTS, SEED_USERS } from '../data/seed'
-import { nameFromEmail } from '../lib/helpers'
+import { CATEGORIES, STATUS } from '../data/constants'
+import { SEED_REQUESTS, SEED_TIPS } from '../data/seed'
 
-const USERS_KEY = 'huduma.users'
-const SESSION_KEY = 'huduma.session'
 const REQUESTS_KEY = 'huduma.requests'
+const TIPS_KEY = 'huduma.tips'
 
 /** Simulates network latency so loading states are visible. */
 const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -47,52 +39,7 @@ function loadOrSeed(key, seed) {
   return seed
 }
 
-// Never hand the password to the UI
-// eslint-disable-next-line no-unused-vars
-const toPublicUser = ({ password, ...safe }) => safe
-
 const newestFirst = (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-
-/* ---------- Authentication ---------- */
-
-export const authService = {
-  getSession() {
-    const id = readJson(SESSION_KEY, null)
-    const user = id ? loadOrSeed(USERS_KEY, SEED_USERS).find((u) => u.id === id) : null
-    return user ? toPublicUser(user) : null
-  },
-
-  /** New sign-ups are always citizens. */
-  async register({ email, ward, password }) {
-    await delay()
-    const users = loadOrSeed(USERS_KEY, SEED_USERS)
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      throw new Error('An account with that email already exists.')
-    }
-    const user = { id: crypto.randomUUID(), fullName: nameFromEmail(email), email, ward, password, role: ROLES.CITIZEN }
-    writeJson(USERS_KEY, [...users, user])
-    writeJson(SESSION_KEY, user.id)
-    return toPublicUser(user)
-  },
-
-  async login({ email, password }) {
-    await delay()
-    const user = loadOrSeed(USERS_KEY, SEED_USERS).find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password,
-    )
-    if (!user) throw new Error('Incorrect email or password.')
-    writeJson(SESSION_KEY, user.id)
-    return toPublicUser(user)
-  },
-
-  logout() {
-    try {
-      localStorage.removeItem(SESSION_KEY)
-    } catch {
-      /* nothing to do */
-    }
-  },
-}
 
 /* ---------- Service requests ---------- */
 
@@ -143,6 +90,68 @@ export const requestService = {
     })
     if (!updated) throw new Error('Request not found.')
     writeJson(REQUESTS_KEY, next)
+    return updated
+  },
+}
+
+/* ---------- Anonymous crime tips ---------- */
+
+// No 0/O/1/I so codes are easy to read out or write down
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+function makeTipCode() {
+  const chars = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('')
+  return `TIP-${chars.slice(0, 4)}-${chars.slice(4)}`
+}
+
+/**
+ * Tips are deliberately anonymous: no userId, no email, no session lookup.
+ * The reporter only gets a random tracking code.
+ */
+export const tipService = {
+  async create({ crimeType, subCounty, location, description, image }) {
+    await delay(400)
+    const tips = loadOrSeed(TIPS_KEY, SEED_TIPS)
+    const now = new Date().toISOString()
+    const tip = {
+      id: crypto.randomUUID(),
+      code: makeTipCode(),
+      crimeType, subCounty, location, description,
+      image: image ?? null,
+      status: STATUS.PENDING,
+      createdAt: now,
+      updatedAt: now,
+      history: [{ status: STATUS.PENDING, at: now, note: 'Tip received' }],
+    }
+    writeJson(TIPS_KEY, [...tips, tip])
+    return { code: tip.code }
+  },
+
+  /** Public lookup by code. Returns only status info, never the details. */
+  async track(code) {
+    await delay(300)
+    const tip = loadOrSeed(TIPS_KEY, SEED_TIPS).find((t) => t.code === code.trim().toUpperCase())
+    if (!tip) throw new Error('No report found with that code. Check it and try again.')
+    return { code: tip.code, status: tip.status, createdAt: tip.createdAt, updatedAt: tip.updatedAt, history: tip.history }
+  },
+
+  /** Admin: every tip, newest first. */
+  async list() {
+    await delay(200)
+    return [...loadOrSeed(TIPS_KEY, SEED_TIPS)].sort(newestFirst)
+  },
+
+  async updateStatus(id, status, note = '') {
+    await delay(250)
+    const now = new Date().toISOString()
+    let updated = null
+    const next = loadOrSeed(TIPS_KEY, SEED_TIPS).map((t) => {
+      if (t.id !== id) return t
+      updated = { ...t, status, updatedAt: now, history: [...t.history, { status, at: now, note: note || 'Status updated by administrator' }] }
+      return updated
+    })
+    if (!updated) throw new Error('Tip not found.')
+    writeJson(TIPS_KEY, next)
     return updated
   },
 }
