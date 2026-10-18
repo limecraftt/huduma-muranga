@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, BellRing, Camera, FileText, Search, ShieldCheck, Zap } from 'lucide-react'
+import { ArrowRight, BellRing, Camera, EyeOff, FileText, Lock, Search, ShieldAlert, ShieldCheck, UserX, Zap } from 'lucide-react'
 import { useAuth } from '../context/auth'
 import { CATEGORIES, SITE } from '../data/constants'
 import { buttonClasses } from '../lib/helpers'
@@ -19,6 +19,16 @@ const HERO_IMAGES = [
 ]
 
 const SLIDE_INTERVAL_MS = 6000
+
+// Route of your anonymous crime report page. Change it to match your router.
+// It must be a PUBLIC route (not wrapped in ProtectedRoute) so nobody has to log in.
+const ANONYMOUS_PATH = '/report-crime'
+
+const ANON_POINTS = [
+  { icon: UserX, title: 'No account needed', text: 'You do not have to sign up or log in to send a tip.' },
+  { icon: EyeOff, title: 'No name required', text: 'Tell us what you saw and where. Your name is not asked for.' },
+  { icon: Lock, title: 'Handled with care', text: 'Your report goes only to the officers who need to act on it.' },
+]
 
 const FEATURES = [
   { icon: Zap, title: 'Report in minutes', text: 'Pick a category, describe the problem and send it. No queues, no paperwork.' },
@@ -204,6 +214,13 @@ export default function LandingPage() {
                 </Link>
               </>
             )}
+            <Link
+              to={ANONYMOUS_PATH}
+              className="group inline-flex items-center justify-center gap-2 rounded-md bg-black/25 px-5 py-3 text-base font-semibold text-white backdrop-blur-sm transition hover:bg-black/40"
+            >
+              <ShieldAlert className="h-4 w-4 transition-transform duration-300 group-hover:scale-125" aria-hidden="true" />
+              Report a crime anonymously
+            </Link>
           </div>
         </Reveal>
       </HeroSlideshow>
@@ -250,6 +267,50 @@ export default function LandingPage() {
               </Link>
             </Reveal>
           ))}
+        </div>
+      </section>
+
+      {/* Anonymous crime reporting */}
+      <section className="bg-slate-900">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2">
+          <Reveal>
+            <span className="inline-flex items-center gap-2 rounded-full bg-brand-600/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-100">
+              <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" /> Anonymous reporting
+            </span>
+            <h2 className="mt-4 text-3xl font-extrabold leading-tight text-white sm:text-4xl">
+              Saw a crime? Report it without giving your name.
+            </h2>
+            <p className="mt-4 max-w-xl text-slate-300">
+              If something is happening in your community and you are afraid to speak up, you can send a tip anonymously.
+              Describe what happened and where, and the county will pass it on to the right authorities.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-4">
+              <Link to={ANONYMOUS_PATH} className={`group ${buttonClasses({ variant: 'light', size: 'lg' })}`}>
+                Report anonymously
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
+              </Link>
+            </div>
+            <p className="mt-5 max-w-xl text-sm text-slate-400">
+              If someone is in immediate danger, do not use this form. Call <strong className="text-white">999</strong> or{' '}
+              <strong className="text-white">112</strong> right away.
+            </p>
+          </Reveal>
+
+          <div className="grid gap-4">
+            {ANON_POINTS.map((a, i) => (
+              <Reveal key={a.title} delay={i * 120}>
+                <div className="group flex gap-4 rounded-xl border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-brand-400/60 hover:bg-white/10 motion-reduce:transform-none">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-600/20 text-brand-100 transition-all duration-300 group-hover:scale-110 group-hover:bg-brand-600 group-hover:text-white">
+                    <a.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-white">{a.title}</h3>
+                    <p className="mt-1 text-sm text-slate-300">{a.text}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
