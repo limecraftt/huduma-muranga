@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Lock, LogIn, Mail } from 'lucide-react'
+import { LogIn, Mail } from 'lucide-react'
 import { Alert, Button, Field, Spinner } from '../components/ui'
+import PasswordInput from '../components/PasswordInput'
 import { useAuth } from '../context/auth'
 import { isValidEmail } from '../lib/helpers'
 
@@ -54,6 +55,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5 p-6 sm:p-8">
             <img src="/logo.png" alt="" className="mx-auto h-20 w-auto" />
+            {location.state?.notice && !formError && <Alert type="success">{location.state.notice}</Alert>}
             {formError && <Alert>{formError}</Alert>}
 
             <Field id="email" label="Email address" required error={errors.email}>
@@ -66,13 +68,12 @@ export default function Login() {
             </Field>
 
             <Field id="password" label="Password" required error={errors.password}>
-              {(cls) => (
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                  <input id="password" type="password" autoComplete="current-password" className={`${cls} pl-9`} value={form.password} onChange={set('password')} placeholder="Your password" />
-                </div>
-              )}
+              {(cls) => <PasswordInput id="password" autoComplete="current-password" className={cls} value={form.password} onChange={set('password')} placeholder="Your password" />}
             </Field>
+
+            <div className="-mt-2 text-right">
+              <Link to="/forgot-password" className="text-sm font-medium text-brand-700 hover:underline">Forgot password?</Link>
+            </div>
 
             <Button type="submit" size="lg" className="w-full" loading={submitting}>
               <LogIn className="h-4 w-4" aria-hidden="true" /> Login

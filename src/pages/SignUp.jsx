@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { Lock, Mail, MapPin, UserPlus } from 'lucide-react'
+import { Mail, MapPin, User, UserPlus } from 'lucide-react'
 import { Alert, Button, Field, Spinner } from '../components/ui'
+import PasswordInput from '../components/PasswordInput'
 import { useAuth } from '../context/auth'
 import { isValidEmail } from '../lib/helpers'
 
 const WARD_SUGGESTIONS = ['Township', 'Kenol', 'Kiharu', 'Ichagaki', 'Mugoiri', 'Kangema', 'Kimorori', 'Gaichanjiru', 'Kandara', 'Ruchu']
 
-/** Sign-up asks only for email, ward and password. */
+/** Sign-up asks for full name, email, ward and password. */
 export default function SignUp() {
   const { user, isAdmin, loading, register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', ward: '', password: '' })
+  const [form, setForm] = useState({ fullName: '', email: '', ward: '', password: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -24,6 +25,7 @@ export default function SignUp() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const found = {}
+    if (form.fullName.trim().length < 2) found.fullName = 'Enter your full name.'
     if (!isValidEmail(form.email)) found.email = 'Enter a valid email address.'
     if (form.ward.trim().length < 2) found.ward = 'Enter your ward.'
     if (form.password.length < 8) found.password = 'Use at least 8 characters.'
@@ -33,7 +35,7 @@ export default function SignUp() {
     setSubmitting(true)
     setFormError('')
     try {
-      await register({ email: form.email.trim(), ward: form.ward.trim(), password: form.password })
+      await register({ fullName: form.fullName.trim(), email: form.email.trim(), ward: form.ward.trim(), password: form.password })
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setFormError(err.message)
@@ -51,6 +53,15 @@ export default function SignUp() {
         <form onSubmit={handleSubmit} noValidate className="space-y-5 p-6 sm:p-8">
           <img src="/logo.png" alt="" className="mx-auto h-20 w-auto" />
           {formError && <Alert>{formError}</Alert>}
+
+          <Field id="fullName" label="Full name" required error={errors.fullName}>
+            {(cls) => (
+              <div className="relative">
+                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <input id="fullName" autoComplete="name" className={`${cls} pl-9`} value={form.fullName} onChange={set('fullName')} placeholder="e.g. Wanjiku Kamau" />
+              </div>
+            )}
+          </Field>
 
           <Field id="email" label="Email address" required error={errors.email}>
             {(cls) => (
@@ -74,12 +85,7 @@ export default function SignUp() {
           </Field>
 
           <Field id="password" label="Password" required error={errors.password} hint="At least 8 characters">
-            {(cls) => (
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                <input id="password" type="password" autoComplete="new-password" className={`${cls} pl-9`} value={form.password} onChange={set('password')} placeholder="Create a password" />
-              </div>
-            )}
+            {(cls) => <PasswordInput id="password" autoComplete="new-password" className={cls} value={form.password} onChange={set('password')} placeholder="Create a password" />}
           </Field>
 
           <Button type="submit" size="lg" className="w-full" loading={submitting}>

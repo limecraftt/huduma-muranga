@@ -2,7 +2,7 @@
  * Authentication with Supabase Auth.
  * Passwords are handled and hashed by Supabase: we never store them.
  * A row in `profiles` (created by a database trigger on sign-up) holds the
- * ward and the role ('citizen' or 'admin').
+ * full name, ward and the role ('citizen' or 'admin').
  */
 import { supabase } from '../lib/supabase'
 import { nameFromEmail } from '../lib/helpers'
@@ -12,6 +12,9 @@ function friendlyMessage(error) {
   const text = (error?.message ?? '').toLowerCase()
   if (text.includes('already registered') || text.includes('already been registered')) return 'An account with that email already exists.'
   if (text.includes('invalid login credentials')) return 'Incorrect email or password.'
+  if (text.includes('different from the old')) return 'Your new password must be different from your old one.'
+  if (text.includes('session missing')) return 'Your reset session has expired. Please request a new code.'
+  if (text.includes('token') || text.includes('otp') || text.includes('expired')) return 'That code is incorrect or has expired. Request a new one and try again.'
   if (text.includes('email not confirmed')) return 'Please confirm your email first, then log in.'
   if (text.includes('rate limit') || text.includes('too many')) return 'Too many attempts. Please wait a minute and try again.'
   if (text.includes('password') && text.includes('characters')) return 'Your password is too short.'
@@ -54,11 +57,11 @@ export const authService = {
   },
 
   /** New sign-ups are always citizens. Admins are promoted in the database. */
-  async register({ email, ward, password }) {
+  async register({ fullName, email, ward, password }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { ward, full_name: nameFromEmail(email) } },
+      options: { data: { ward, full_name: fullName } },
     })
     if (error) throw new Error(friendlyMessage(error))
     // With "Confirm email" switched on in Supabase there is no session yet
@@ -74,5 +77,23 @@ export const authService = {
 
   async logout() {
     await supabase.auth.signOut()
+  },
+
+  /** Emails a 6-digit code. Supabase gives the same answer whether or not the email exists. */
+  async requestPasswordReset(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    if (error) throw new Error(friendlyMessage(error))
+  },
+
+  /** Checks the emailed code. If it is right, Supabase signs the person in temporarily so they can set a password. */
+  async verifyResetCode(email, token) {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' })
+    if (error) throw new Error(friendlyMessage(error))
+  },
+
+  /** Works only while the person holds the temporary session from a verified code (or is logged in). */
+  async updatePassword(password) {
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw new Error(friendlyMessage(error))
   },
 }
