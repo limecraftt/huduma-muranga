@@ -216,7 +216,7 @@ export default function LandingPage() {
             )}
             <Link
               to={ANONYMOUS_PATH}
-              className="group inline-flex items-center justify-center gap-2 rounded-md bg-black/25 px-5 py-3 text-base font-semibold text-white backdrop-blur-sm transition hover:bg-black/40"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/20 bg-slate-900/90 px-5 py-3 text-base font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-900 sm:w-auto"
             >
               <ShieldAlert className="h-4 w-4 transition-transform duration-300 group-hover:scale-125" aria-hidden="true" />
               Report a crime anonymously
