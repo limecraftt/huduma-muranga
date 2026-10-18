@@ -29,7 +29,13 @@ const STEPS = [
   { icon: Search, title: 'Track progress', text: 'Follow it from Pending to In Progress to Resolved.' },
 ]
 
-/** Hero wrapper: fading background slideshow + green overlay + dots. */
+/**
+ * Hero wrapper.
+ * Phones/small tablets: the picture shows in full on top (no overlay),
+ * and the text sits on solid green underneath, so nothing hides the photo.
+ * md and up: the picture fills the hero and a soft shade covers only the
+ * left side behind the text, so the right side stays bright and clear.
+ */
 function HeroSlideshow({ children }) {
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -44,39 +50,43 @@ function HeroSlideshow({ children }) {
 
   return (
     <section
-      className="relative isolate flex min-h-[32rem] items-center overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 text-white sm:min-h-[36rem] lg:min-h-[40rem]"
+      className="relative isolate bg-brand-800 text-white md:flex md:min-h-[34rem] md:items-center md:overflow-hidden lg:min-h-[40rem]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={() => setPaused(true)}
       onTouchEnd={() => setPaused(false)}
     >
-      {/* Background pictures: stacked, only the active one is visible */}
-      {HERO_IMAGES.map((img, i) => (
-        <img
-          key={img.src}
-          src={img.src}
-          alt=""
-          aria-hidden="true"
-          decoding="async"
-          loading={i === 0 ? 'eager' : 'lazy'}
-          fetchPriority={i === 0 ? 'high' : 'auto'}
-          style={{ objectPosition: img.position }}
-          className={`absolute inset-0 -z-20 h-full w-full object-cover transition-opacity duration-1000 ${
-            i === active ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-      ))}
+      {/* Pictures: a block on top on phones, full background from md up */}
+      <div className="relative h-64 w-full overflow-hidden sm:h-80 md:absolute md:inset-0 md:-z-10 md:h-auto">
+        {HERO_IMAGES.map((img, i) => (
+          <img
+            key={img.src}
+            src={img.src}
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            loading={i === 0 ? 'eager' : 'lazy'}
+            fetchPriority={i === 0 ? 'high' : 'auto'}
+            style={{ objectPosition: img.position }}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
+              i === active ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        ))}
 
-      {/* Green overlay: top-to-bottom on phones (text covers the full width),
-          left-to-right on tablets and desktops (text sits on the left) */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-brand-900/85 via-brand-800/75 to-brand-700/85 sm:bg-gradient-to-r sm:from-brand-900/90 sm:via-brand-800/65 sm:to-brand-600/20" />
+        {/* Phones: only a thin blend into the green panel below */}
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-brand-800 to-transparent md:hidden" />
+
+        {/* md+: shade only the left ~55% behind the text, clear on the right */}
+        <div className="absolute inset-0 hidden bg-gradient-to-r from-brand-900/85 via-brand-900/45 via-45% to-transparent to-70% md:block" />
+      </div>
 
       {/* Hero content */}
-      <div className="mx-auto w-full max-w-7xl px-4 pb-20 pt-14 sm:px-6 sm:pb-28 sm:pt-20">{children}</div>
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 md:pb-28 md:pt-20">{children}</div>
 
-      {/* Slide dots */}
+      {/* Slide dots: bottom of the picture on phones, bottom of the hero on md+ */}
       {HERO_IMAGES.length > 1 && (
-        <div className="absolute bottom-12 left-1/2 flex -translate-x-1/2 gap-2 sm:bottom-14">
+        <div className="absolute left-1/2 top-[13.25rem] z-20 flex -translate-x-1/2 gap-2 sm:top-[18.25rem] md:bottom-12 md:top-auto">
           {HERO_IMAGES.map((img, i) => (
             <button
               key={img.src}
@@ -84,8 +94,8 @@ function HeroSlideshow({ children }) {
               onClick={() => setActive(i)}
               aria-label={`Show slide ${i + 1}`}
               aria-current={i === active}
-              className={`h-2.5 rounded-full transition-all ${
-                i === active ? 'w-8 bg-white' : 'w-2.5 bg-white/50 hover:bg-white/80'
+              className={`h-2.5 rounded-full shadow transition-all ${
+                i === active ? 'w-8 bg-white' : 'w-2.5 bg-white/60 hover:bg-white/90'
               }`}
             />
           ))}
@@ -108,7 +118,7 @@ export default function LandingPage() {
         <p className="mb-3 inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur-sm">
           {SITE.county}
         </p>
-        <h1 className="max-w-3xl text-3xl font-extrabold leading-tight drop-shadow-sm sm:text-5xl lg:text-6xl">
+        <h1 className="max-w-3xl text-3xl font-extrabold leading-tight sm:text-5xl md:drop-shadow-md lg:text-6xl">
           Report a county service problem. Track it until it is fixed.
         </h1>
         <p className="mt-5 max-w-2xl text-base text-brand-50 sm:text-lg">
