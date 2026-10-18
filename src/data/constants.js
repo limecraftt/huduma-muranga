@@ -1,6 +1,6 @@
 /**
  * Static reference data and site configuration used across the app.
- * Contact details are placeholders for the academic demo: edit them here.
+ * Edit contact details and site text here.
  */
 import { Construction, Droplets, HeartPulse, Lightbulb, MoreHorizontal, Trash2 } from 'lucide-react'
 
@@ -11,20 +11,19 @@ export const SITE = {
   description:
     "We are dedicated to transforming the livelihood of the people of Murang'a County on a foundation of integrity through accountable, efficient and effective leadership.",
   copyrightYears: '2026 - 2027',
-  disclaimer: 'Academic project. Not an official government service.',
 }
 
 export const CONTACT = {
-  address: "P.O Box 00000 - 10200 Murang'a",
-  phone: '+254 700 000 000',
-  email: 'info@example.go.ke',
-  complaintsEmail: 'complaints@example.go.ke',
+  address: "P.O Box 52 - 10200 Murang'a",
+  phone: '+254 757 562 988',
+  email: 'info@muranga.go.ke',
+  complaintsEmail: 'complain@muranga.go.ke',
 }
 
 export const QUICK_CONTACTS = [
-  { label: 'Ambulance', phone: '0700 000 001' },
-  { label: 'Call Center', phone: '0700 000 002' },
-  { label: 'Fire Hotline', phone: '0700 000 003' },
+  { label: 'Ambulance', phone: '0716 017 296' },
+  { label: 'Call Center', phone: '0757 562 988' },
+  { label: 'Fire Hotline', phone: '080 072 1800' },
 ]
 
 export const SOCIAL_LINKS = [

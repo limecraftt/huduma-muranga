@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { LogOut, Menu, Phone, X } from 'lucide-react'
+import { LogOut, Menu, X } from 'lucide-react'
 import Logo from './Logo'
 import { useAuth } from '../context/auth'
-import { CONTACT } from '../data/constants'
 import { buttonClasses } from '../lib/helpers'
 
 const navClass = ({ isActive }) =>
@@ -26,16 +25,6 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-white shadow-sm">
-      {/* Top strip */}
-      <div className="bg-brand-700 text-brand-50">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 text-xs sm:px-6">
-          <span className="hidden sm:inline">Official-style demo portal · Academic project</span>
-          <a href={`tel:${CONTACT.phone.replace(/\s/g, '')}`} className="inline-flex items-center gap-1.5 hover:text-white">
-            <Phone className="h-3 w-3" aria-hidden="true" /> {CONTACT.phone}
-          </a>
-        </div>
-      </div>
-
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Logo />
 

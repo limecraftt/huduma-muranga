@@ -58,9 +58,8 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4 text-center text-xs text-brand-100/80 sm:flex-row sm:justify-between sm:px-6 sm:text-left">
+        <div className="mx-auto max-w-7xl px-4 py-4 text-center text-xs text-brand-100/80 sm:px-6 sm:text-left">
           <p>© {SITE.copyrightYears} {SITE.county}. All rights reserved.</p>
-          <p>{SITE.disclaimer}</p>
         </div>
       </div>
     </footer>
