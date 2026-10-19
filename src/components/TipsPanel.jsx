@@ -3,7 +3,7 @@ import { MapPin } from 'lucide-react'
 import { Alert, Button, EmptyState, Modal, Spinner, StatusBadge } from './ui'
 import { CRIME_TYPES, STATUS_FLOW, STATUS_META } from '../data/constants'
 import { fieldClass, formatDate, formatDateTime } from '../lib/helpers'
-import { tipService } from '../services/mockApi'
+import { tipService } from '../services/tipService'
 
 const crimeLabel = (id) => CRIME_TYPES.find((c) => c.id === id)?.label ?? 'Other crime'
 

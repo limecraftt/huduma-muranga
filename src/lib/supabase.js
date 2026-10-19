@@ -9,5 +9,14 @@ if (!url || !anonKey) {
   )
 }
 
-/** The single Supabase client used by every service file. */
+/** The main Supabase client: keeps the logged-in user's session. */
 export const supabase = createClient(url, anonKey)
+
+/**
+ * A second client that NEVER holds a session. Anonymous crime tips go through it,
+ * so nothing about a tip (database call or photo upload) can be linked to a
+ * logged-in account, even if the reporter happens to be signed in.
+ */
+export const supabaseAnon = createClient(url, anonKey, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'huduma-anonymous' },
+})

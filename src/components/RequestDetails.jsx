@@ -3,7 +3,7 @@ import { Check, MapPin } from 'lucide-react'
 import { Alert, Button, Modal, StatusBadge } from './ui'
 import { STATUS_FLOW, STATUS_META } from '../data/constants'
 import { categoryOf, fieldClass, formatDate, formatDateTime } from '../lib/helpers'
-import { requestService } from '../services/mockApi'
+import { requestService } from '../services/requestService'
 
 /** Three-step tracker: Pending -> In Progress -> Resolved. */
 function ProgressTracker({ status }) {

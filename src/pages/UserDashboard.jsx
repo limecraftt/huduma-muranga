@@ -7,7 +7,7 @@ import { useAuth } from '../context/auth'
 import { STATUS_META } from '../data/constants'
 import { useRequests } from '../hooks/useRequests'
 import { categoryOf, formatDate } from '../lib/helpers'
-import { computeStats } from '../services/mockApi'
+import { computeStats } from '../lib/stats'
 
 /* ---------- Small visual helpers (animation only, no app logic) ---------- */
 

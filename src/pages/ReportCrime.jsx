@@ -3,7 +3,7 @@ import { Check, Copy, EyeOff, ImagePlus, Search, Send, ShieldAlert, Trash2 } fro
 import { Alert, Button, Field, StatusBadge } from '../components/ui'
 import { CRIME_TYPES, EMERGENCY_NUMBERS, STATUS_META, SUB_COUNTIES } from '../data/constants'
 import { fieldClass, fileToResizedDataUrl, formatDateTime } from '../lib/helpers'
-import { tipService } from '../services/mockApi'
+import { tipService } from '../services/tipService'
 
 const EMPTY = { crimeType: '', subCounty: '', location: '', description: '' }
 

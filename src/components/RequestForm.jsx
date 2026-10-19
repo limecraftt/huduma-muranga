@@ -4,7 +4,7 @@ import { Alert, Button, Field } from './ui'
 import { useAuth } from '../context/auth'
 import { CATEGORIES, SUB_COUNTIES } from '../data/constants'
 import { fileToResizedDataUrl } from '../lib/helpers'
-import { requestService } from '../services/mockApi'
+import { requestService } from '../services/requestService'
 
 const EMPTY = { category: '', subCounty: '', location: '', description: '' }
 

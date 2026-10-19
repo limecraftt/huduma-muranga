@@ -6,7 +6,7 @@ import { Alert, Button, EmptyState, Spinner, StatCard, StatusBadge } from '../co
 import { STATUS, STATUS_META, SUB_COUNTIES } from '../data/constants'
 import { useRequests } from '../hooks/useRequests'
 import { categoryOf, fieldClass, formatDate } from '../lib/helpers'
-import { computeStats } from '../services/mockApi'
+import { computeStats } from '../lib/stats'
 
 /** Requests that still need work; everything else is history. */
 const LIVE_STATUSES = [STATUS.PENDING, STATUS.IN_PROGRESS]
