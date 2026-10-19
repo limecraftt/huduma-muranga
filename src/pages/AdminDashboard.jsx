@@ -16,15 +16,12 @@ const prefersReducedMotion = () =>
 /** True once the element has scrolled into view (and stays true). */
 function useInView(threshold = 0.15) {
   const ref = useRef(null)
-  const [inView, setInView] = useState(false)
+  // Old browsers without IntersectionObserver just show everything straight away
+  const [inView, setInView] = useState(() => typeof IntersectionObserver === 'undefined')
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    if (!('IntersectionObserver' in window)) {
-      setInView(true)
-      return
-    }
+    if (!el || inView) return
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -36,7 +33,7 @@ function useInView(threshold = 0.15) {
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [threshold])
+  }, [threshold, inView])
 
   return [ref, inView]
 }
@@ -61,13 +58,10 @@ function Reveal({ children, delay = 0, className = '' }) {
 function CountUp({ value, duration = 1000 }) {
   const [ref, inView] = useInView(0.4)
   const [n, setN] = useState(0)
+  const instant = !value || prefersReducedMotion()
 
   useEffect(() => {
-    if (!inView) return
-    if (prefersReducedMotion() || !value) {
-      setN(value)
-      return
-    }
+    if (!inView || instant) return
     let raf
     const start = performance.now()
     const tick = (now) => {
@@ -77,9 +71,9 @@ function CountUp({ value, duration = 1000 }) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [inView, value, duration])
+  }, [inView, instant, value, duration])
 
-  return <span ref={ref}>{n}</span>
+  return <span ref={ref}>{instant ? value : n}</span>
 }
 
 /** A bar segment whose width grows from 0 when it appears. */
@@ -157,15 +151,15 @@ export default function AdminDashboard() {
             hint={`${stats.resolutionRate}% resolution rate`}
           />,
         ].map((card, i) => (
-          <Reveal key={card.key} delay={i * 80}>
-            <div className="h-full transition-all duration-300 hover:-translate-y-1 hover:drop-shadow-lg motion-reduce:transform-none">{card}</div>
+          <Reveal key={card.key} delay={i * 80} className="h-full">
+            <div className="h-full [&>*]:h-full transition-all duration-300 hover:-translate-y-1 hover:drop-shadow-lg motion-reduce:transform-none">{card}</div>
           </Reveal>
         ))}
       </div>
 
       {/* Analytics */}
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Reveal>
+        <Reveal className="h-full">
           <section className="h-full rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-md">
             <h2 className="font-bold text-slate-900">Open vs resolved</h2>
             <div
@@ -189,7 +183,7 @@ export default function AdminDashboard() {
           </section>
         </Reveal>
 
-        <Reveal delay={100}>
+        <Reveal delay={100} className="h-full">
           <section className="h-full rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-md">
             <h2 className="font-bold text-slate-900">Requests by category</h2>
             <ul className="mt-4 space-y-3.5">
@@ -255,23 +249,21 @@ export default function AdminDashboard() {
                       className="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-4 pl-5 text-left shadow-sm transition-all duration-300 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                     >
                       <span className={`absolute inset-y-0 left-0 w-1.5 ${accent}`} aria-hidden="true" />
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                            <category.icon className="h-5 w-5" aria-hidden="true" />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-slate-900">{category.label}</p>
-                            <p className="truncate text-xs text-slate-500">{r.ref}</p>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                          <category.icon className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold leading-snug text-slate-900">{category.label}</p>
+                          <p className="font-mono text-xs text-slate-500">{r.ref}</p>
                         </div>
-                        <StatusBadge status={r.status} />
                       </div>
-                      <p className="mt-3 truncate text-sm text-slate-600">{r.location}, {r.subCounty}</p>
-                      <div className="mt-2 flex items-center justify-between text-xs">
-                        <span className="text-slate-500">{formatDate(r.createdAt)}</span>
-                        <span className="inline-flex items-center gap-1 font-semibold text-brand-700">
-                          Manage <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                      <p className="mt-3 text-sm text-slate-600">{r.location}, {r.subCounty}</p>
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                        <span className="text-xs text-slate-500">{formatDate(r.createdAt)}</span>
+                        <span className="flex items-center gap-1 whitespace-nowrap">
+                          <StatusBadge status={r.status} />
+                          <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
                         </span>
                       </div>
                     </button>

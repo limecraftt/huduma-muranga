@@ -59,7 +59,7 @@ function TipDetails({ tip, onClose, onChanged }) {
   )
 }
 
-/** Admin-only list of anonymous crime tips. */
+/** Admin-only list of anonymous crime tips (cards on phones, table from tablet width). */
 export default function TipsPanel() {
   const [tips, setTips] = useState([])
   const [loading, setLoading] = useState(true)
@@ -84,33 +84,70 @@ export default function TipsPanel() {
 
   return (
     <section className="mt-12">
-      <h2 className="text-lg font-bold text-slate-900">Anonymous crime tips ({tips.length})</h2>
-      <p className="mb-4 text-sm text-slate-600">Reporters are not identifiable. Update the status and leave a note they can see with their code.</p>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-lg font-bold text-slate-900">Anonymous crime tips</h2>
+        <p className="text-sm text-slate-500">{tips.length} total</p>
+      </div>
+      <p className="mb-4 mt-1 text-sm text-slate-600">Reporters are not identifiable. Update the status and leave a note they can see with their code.</p>
       {error && <Alert>{error}</Alert>}
       {loading ? (
         <Spinner />
       ) : tips.length === 0 ? (
-        <EmptyState title="No tips yet" />
+        <EmptyState title="No tips yet" message="Anonymous reports will appear here." />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-              <tr><th className="px-4 py-3">Code</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Location</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"><span className="sr-only">Action</span></th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {tips.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono font-medium text-slate-900">{t.code}</td>
-                  <td className="px-4 py-3">{crimeLabel(t.crimeType)}</td>
-                  <td className="px-4 py-3 text-slate-600">{t.location}, {t.subCounty}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDate(t.createdAt)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                  <td className="px-4 py-3 text-right"><button onClick={() => setSelected(t)} className="font-semibold text-brand-700 hover:underline">Review</button></td>
+        <>
+          {/* Phones */}
+          <ul className="space-y-3 md:hidden">
+            {tips.map((t) => (
+              <li key={t.id}>
+                <button onClick={() => setSelected(t)} className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors active:bg-slate-50">
+                  <span className="block font-semibold text-slate-900">{crimeLabel(t.crimeType)}</span>
+                  <span className="mt-0.5 flex items-center gap-1 text-sm text-slate-500">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t.location}, {t.subCounty}</span>
+                  </span>
+                  <span className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                    <span className="min-w-0 text-xs text-slate-500">
+                      <span className="block font-mono font-medium text-slate-700">{t.code}</span>
+                      <span>{formatDate(t.createdAt)}</span>
+                    </span>
+                    <StatusBadge status={t.status} />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Tablet and desktop */}
+          <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Code</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Location</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3"><span className="sr-only">Action</span></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {tips.map((t) => (
+                  <tr key={t.id} className="transition-colors hover:bg-slate-50">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-medium text-slate-900">{t.code}</td>
+                    <td className="px-4 py-3 text-slate-800">{crimeLabel(t.crimeType)}</td>
+                    <td className="px-4 py-3 text-slate-600">{t.location}, {t.subCounty}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(t.createdAt)}</td>
+                    <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => setSelected(t)} className="rounded-md border border-brand-200 bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-600">Review</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       {selected && <TipDetails tip={selected} onClose={() => setSelected(null)} onChanged={load} />}
     </section>

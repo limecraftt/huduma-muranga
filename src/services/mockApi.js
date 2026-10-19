@@ -6,10 +6,9 @@
  * These are replaced with Supabase calls in the next steps.
  */
 import { CATEGORIES, STATUS } from '../data/constants'
-import { SEED_REQUESTS, SEED_TIPS } from '../data/seed'
 
-const REQUESTS_KEY = 'huduma.requests'
-const TIPS_KEY = 'huduma.tips'
+const REQUESTS_KEY = 'huduma.requests.v2'
+const TIPS_KEY = 'huduma.tips.v2'
 
 /** Simulates network latency so loading states are visible. */
 const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -31,13 +30,8 @@ function writeJson(key, value) {
   }
 }
 
-/** Loads a collection, creating it from seed data on first run. */
-function loadOrSeed(key, seed) {
-  const existing = readJson(key, null)
-  if (existing) return existing
-  writeJson(key, seed)
-  return seed
-}
+/** Loads a collection (empty until something is submitted). */
+const load = (key) => readJson(key, [])
 
 const newestFirst = (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
 
@@ -46,17 +40,17 @@ const newestFirst = (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
 export const requestService = {
   async list() {
     await delay(200)
-    return [...loadOrSeed(REQUESTS_KEY, SEED_REQUESTS)].sort(newestFirst)
+    return [...load(REQUESTS_KEY)].sort(newestFirst)
   },
 
   async listForUser(userId) {
     await delay(200)
-    return loadOrSeed(REQUESTS_KEY, SEED_REQUESTS).filter((r) => r.userId === userId).sort(newestFirst)
+    return load(REQUESTS_KEY).filter((r) => r.userId === userId).sort(newestFirst)
   },
 
   async create({ userId, category, subCounty, location, description, image }) {
     await delay(400)
-    const requests = loadOrSeed(REQUESTS_KEY, SEED_REQUESTS)
+    const requests = load(REQUESTS_KEY)
     const now = new Date().toISOString()
     const request = {
       id: crypto.randomUUID(),
@@ -78,7 +72,7 @@ export const requestService = {
     await delay(250)
     const now = new Date().toISOString()
     let updated = null
-    const next = loadOrSeed(REQUESTS_KEY, SEED_REQUESTS).map((r) => {
+    const next = load(REQUESTS_KEY).map((r) => {
       if (r.id !== id) return r
       updated = {
         ...r,
@@ -111,7 +105,7 @@ function makeTipCode() {
 export const tipService = {
   async create({ crimeType, subCounty, location, description, image }) {
     await delay(400)
-    const tips = loadOrSeed(TIPS_KEY, SEED_TIPS)
+    const tips = load(TIPS_KEY)
     const now = new Date().toISOString()
     const tip = {
       id: crypto.randomUUID(),
@@ -130,7 +124,7 @@ export const tipService = {
   /** Public lookup by code. Returns only status info, never the details. */
   async track(code) {
     await delay(300)
-    const tip = loadOrSeed(TIPS_KEY, SEED_TIPS).find((t) => t.code === code.trim().toUpperCase())
+    const tip = load(TIPS_KEY).find((t) => t.code === code.trim().toUpperCase())
     if (!tip) throw new Error('No report found with that code. Check it and try again.')
     return { code: tip.code, status: tip.status, createdAt: tip.createdAt, updatedAt: tip.updatedAt, history: tip.history }
   },
@@ -138,14 +132,14 @@ export const tipService = {
   /** Admin: every tip, newest first. */
   async list() {
     await delay(200)
-    return [...loadOrSeed(TIPS_KEY, SEED_TIPS)].sort(newestFirst)
+    return [...load(TIPS_KEY)].sort(newestFirst)
   },
 
   async updateStatus(id, status, note = '') {
     await delay(250)
     const now = new Date().toISOString()
     let updated = null
-    const next = loadOrSeed(TIPS_KEY, SEED_TIPS).map((t) => {
+    const next = load(TIPS_KEY).map((t) => {
       if (t.id !== id) return t
       updated = { ...t, status, updatedAt: now, history: [...t.history, { status, at: now, note: note || 'Status updated by administrator' }] }
       return updated
