@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, ChevronRight, Clock, ClipboardList, Hourglass, ShieldCheck, X } from 'lucide-react'
+import LiveHistoryTabs from '../components/LiveHistoryTabs'
 import RequestDetails from '../components/RequestDetails'
 import TipsPanel from '../components/TipsPanel'
 import { Alert, Button, EmptyState, Spinner, StatCard, StatusBadge } from '../components/ui'
 import { STATUS, STATUS_META, SUB_COUNTIES } from '../data/constants'
 import { useRequests } from '../hooks/useRequests'
+import { useTips } from '../hooks/useTips'
 import { categoryOf, fieldClass, formatDate } from '../lib/helpers'
 import { computeStats } from '../lib/stats'
 
@@ -96,6 +98,7 @@ function GrowBar({ percent, className = '', delay = 0 }) {
 /** Admin view: all requests, analytics, filters and status updates. */
 export default function AdminDashboard() {
   const { requests, loading, error, reload } = useRequests()
+  const { tips, loading: tipsLoading, error: tipsError, reload: reloadTips } = useTips()
   const [tab, setTab] = useState('live') // 'live' | 'history'
   const [statusFilter, setStatusFilter] = useState('all')
   const [subCountyFilter, setSubCountyFilter] = useState('all')
@@ -103,6 +106,9 @@ export default function AdminDashboard() {
   const [selected, setSelected] = useState(null)
 
   const stats = useMemo(() => computeStats(requests), [requests])
+  const tipStats = useMemo(() => computeStats(tips), [tips])
+  // The banner counts everything waiting for an admin: citizen requests and anonymous tips
+  const awaiting = stats.pending + tipStats.pending
 
   // Live = pending / in progress (newest first). History = resolved (most recently resolved first).
   const { liveRequests, historyRequests } = useMemo(
@@ -148,13 +154,13 @@ export default function AdminDashboard() {
                 <p className="text-sm text-brand-100">Review citizen requests and update their progress.</p>
               </div>
             </div>
-            {!loading && (
+            {!loading && !tipsLoading && (
               <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1.5 text-sm font-semibold backdrop-blur-sm">
                 <span className="relative flex h-2.5 w-2.5">
-                  {stats.pending > 0 && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-75 motion-reduce:hidden" />}
-                  <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${stats.pending > 0 ? 'bg-amber-300' : 'bg-brand-300'}`} />
+                  {awaiting > 0 && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-75 motion-reduce:hidden" />}
+                  <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${awaiting > 0 ? 'bg-amber-300' : 'bg-brand-300'}`} />
                 </span>
-                {stats.pending} awaiting action
+                {awaiting} awaiting action
               </span>
             )}
           </div>
@@ -232,28 +238,7 @@ export default function AdminDashboard() {
 
       {/* Requests: live work on top, resolved ones tucked away in History */}
       <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div role="tablist" aria-label="Request list" className="grid grid-cols-2 rounded-xl bg-slate-200/70 p-1 sm:inline-grid sm:w-72">
-          {[
-            { id: 'live', label: 'Live', count: liveRequests.length },
-            { id: 'history', label: 'History', count: historyRequests.length },
-          ].map((t) => {
-            const active = tab === t.id
-            return (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={active}
-                onClick={() => changeTab(t.id)}
-                className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
-                  active ? 'bg-white text-brand-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {t.label}
-                <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-brand-100 text-brand-800' : 'bg-white/70 text-slate-500'}`}>{t.count}</span>
-              </button>
-            )
-          })}
-        </div>
+        <LiveHistoryTabs tab={tab} onChange={changeTab} liveCount={liveRequests.length} historyCount={historyRequests.length} label="Request list" />
 
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
           {!isHistory && (
@@ -396,7 +381,7 @@ export default function AdminDashboard() {
         </>
       )}
 
-      <TipsPanel />
+      <TipsPanel tips={tips} loading={tipsLoading} error={tipsError} stats={tipStats} onChanged={reloadTips} />
 
       {selected && <RequestDetails request={selected} isAdmin onClose={() => setSelected(null)} onChanged={reload} />}
     </div>

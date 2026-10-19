@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { MapPin } from 'lucide-react'
+import LiveHistoryTabs from './LiveHistoryTabs'
 import { Alert, Button, EmptyState, Modal, Spinner, StatusBadge } from './ui'
-import { CRIME_TYPES, STATUS_FLOW, STATUS_META } from '../data/constants'
+import { CRIME_TYPES, STATUS, STATUS_FLOW, STATUS_META } from '../data/constants'
 import { fieldClass, formatDate, formatDateTime } from '../lib/helpers'
 import { tipService } from '../services/tipService'
+
+/** Tips shown per page, so the list never gets overwhelmingly long. */
+const PAGE_SIZE = 6
 
 const crimeLabel = (id) => CRIME_TYPES.find((c) => c.id === id)?.label ?? 'Other crime'
 
@@ -59,46 +63,66 @@ function TipDetails({ tip, onClose, onChanged }) {
   )
 }
 
-/** Admin-only list of anonymous crime tips (cards on phones, table from tablet width). */
-export default function TipsPanel() {
-  const [tips, setTips] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+/** One small number tile for the summary row. */
+function Tile({ label, value, tone }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <p className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <span className={`h-2 w-2 rounded-full ${tone}`} />{label}
+      </p>
+      <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
+    </div>
+  )
+}
+
+/**
+ * Admin-only anonymous crime tips: counts, Live / History tabs, and a list
+ * (cards on phones, table from tablet width). The dashboard loads the tips
+ * and passes them in, so the same numbers can also feed the page header.
+ */
+export default function TipsPanel({ tips, loading, error, stats, onChanged }) {
+  const [tab, setTab] = useState('live') // 'live' | 'history'
+  const [visible, setVisible] = useState(PAGE_SIZE)
   const [selected, setSelected] = useState(null)
 
-  const load = useCallback(async () => {
-    try {
-      setTips(await tipService.list())
-      setError('')
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const isHistory = tab === 'history'
+  const liveTips = tips.filter((t) => t.status !== STATUS.RESOLVED)
+  const historyTips = tips.filter((t) => t.status === STATUS.RESOLVED).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+  const list = isHistory ? historyTips : liveTips
+  const shown = list.slice(0, visible)
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
-  }, [load])
+  const changeTab = (next) => { setTab(next); setVisible(PAGE_SIZE) }
 
   return (
     <section className="mt-12">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-bold text-slate-900">Anonymous crime tips</h2>
-        <p className="text-sm text-slate-500">{tips.length} total</p>
-      </div>
+      <h2 className="text-lg font-bold text-slate-900">Anonymous crime tips</h2>
       <p className="mb-4 mt-1 text-sm text-slate-600">Reporters are not identifiable. Update the status and leave a note they can see with their code.</p>
-      {error && <Alert>{error}</Alert>}
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Tile label="Total tips" value={stats.total} tone="bg-slate-400" />
+        <Tile label="Pending" value={stats.pending} tone="bg-amber-500" />
+        <Tile label="In progress" value={stats.inProgress} tone="bg-sky-500" />
+        <Tile label="Resolved" value={stats.resolved} tone="bg-brand-600" />
+      </div>
+
+      <LiveHistoryTabs tab={tab} onChange={changeTab} liveCount={liveTips.length} historyCount={historyTips.length} label="Tips list" />
+      <p className="mb-4 mt-4 text-sm text-slate-600">
+        {isHistory ? 'Resolved tips, most recently resolved first.' : 'Pending and in-progress tips that still need action.'}
+      </p>
+
+      {error && <div className="mb-4"><Alert>{error}</Alert></div>}
       {loading ? (
         <Spinner />
-      ) : tips.length === 0 ? (
-        <EmptyState title="No tips yet" message="Anonymous reports will appear here." />
+      ) : list.length === 0 ? (
+        <EmptyState
+          title={isHistory ? 'No resolved tips yet' : tips.length ? 'All caught up' : 'No tips yet'}
+          message={isHistory ? 'Tips move here once you mark them as resolved.' : tips.length ? 'There are no live tips right now. Resolved ones are in History.' : 'Anonymous reports will appear here.'}
+        />
       ) : (
         <>
           {/* Phones */}
           <ul className="space-y-3 md:hidden">
-            {tips.map((t) => (
+            {shown.map((t) => (
               <li key={t.id}>
                 <button onClick={() => setSelected(t)} className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors active:bg-slate-50">
                   <span className="block font-semibold text-slate-900">{crimeLabel(t.crimeType)}</span>
@@ -109,7 +133,7 @@ export default function TipsPanel() {
                   <span className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
                     <span className="min-w-0 text-xs text-slate-500">
                       <span className="block font-mono font-medium text-slate-700">{t.code}</span>
-                      <span>{formatDate(t.createdAt)}</span>
+                      <span>{isHistory ? `Resolved ${formatDate(t.updatedAt)}` : formatDate(t.createdAt)}</span>
                     </span>
                     <StatusBadge status={t.status} />
                   </span>
@@ -126,30 +150,37 @@ export default function TipsPanel() {
                   <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">{isHistory ? 'Resolved' : 'Date'}</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3"><span className="sr-only">Action</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tips.map((t) => (
+                {shown.map((t) => (
                   <tr key={t.id} className="transition-colors hover:bg-slate-50">
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-medium text-slate-900">{t.code}</td>
                     <td className="px-4 py-3 text-slate-800">{crimeLabel(t.crimeType)}</td>
                     <td className="px-4 py-3 text-slate-600">{t.location}, {t.subCounty}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(t.createdAt)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(isHistory ? t.updatedAt : t.createdAt)}</td>
                     <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => setSelected(t)} className="rounded-md border border-brand-200 bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-600">Review</button>
+                      <button onClick={() => setSelected(t)} className="rounded-md border border-brand-200 bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-600">{isHistory ? 'View' : 'Review'}</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {list.length > shown.length && (
+            <div className="mt-5 flex flex-col items-center gap-2">
+              <Button variant="outline" onClick={() => setVisible((n) => n + PAGE_SIZE)}>Show more ({list.length - shown.length} remaining)</Button>
+              <p className="text-xs text-slate-500">Showing {shown.length} of {list.length}</p>
+            </div>
+          )}
         </>
       )}
-      {selected && <TipDetails tip={selected} onClose={() => setSelected(null)} onChanged={load} />}
+      {selected && <TipDetails tip={selected} onClose={() => setSelected(null)} onChanged={onChanged} />}
     </section>
   )
 }

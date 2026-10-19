@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, ChevronRight, Clock, ClipboardList, Mail, MapPin, Plus } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Clock, ClipboardList, Mail, MapPin, Plus, Search, X } from 'lucide-react'
 import RequestDetails from '../components/RequestDetails'
 import RequestForm from '../components/RequestForm'
+import StatusPills from '../components/StatusPills'
 import { Alert, Button, EmptyState, Modal, Spinner, StatCard, StatusBadge } from '../components/ui'
 import { useAuth } from '../context/auth'
-import { STATUS_META } from '../data/constants'
+import { CATEGORIES, STATUS, STATUS_META } from '../data/constants'
 import { useRequests } from '../hooks/useRequests'
 import { categoryOf, formatDate } from '../lib/helpers'
 import { computeStats } from '../lib/stats'
@@ -77,6 +78,9 @@ function CountUp({ value, duration = 1000 }) {
   return <span ref={ref}>{instant ? value : n}</span>
 }
 
+/** Requests shown per page. */
+const PAGE_SIZE = 8
+
 /** Citizen view: own requests, a "new request" form and status tracking. */
 export default function UserDashboard() {
   const { user } = useAuth()
@@ -85,6 +89,31 @@ export default function UserDashboard() {
   const [selected, setSelected] = useState(null)
   const [notice, setNotice] = useState('')
   const stats = computeStats(requests)
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [visible, setVisible] = useState(PAGE_SIZE)
+
+  const query = search.trim().toLowerCase()
+  const filtered = requests.filter((r) => {
+    if (statusFilter !== 'all' && r.status !== statusFilter) return false
+    if (categoryFilter !== 'all' && r.category !== categoryFilter) return false
+    if (!query) return true
+    return [r.ref, r.location, categoryOf(r.category).label, r.description].some((v) => (v ?? '').toLowerCase().includes(query))
+  })
+  const shown = filtered.slice(0, visible)
+  const filtersActive = statusFilter !== 'all' || categoryFilter !== 'all' || query !== ''
+
+  const pillOptions = [
+    { id: 'all', label: 'All', count: stats.total },
+    { id: STATUS.PENDING, label: STATUS_META.pending.label, count: stats.pending },
+    { id: STATUS.IN_PROGRESS, label: STATUS_META.in_progress.label, count: stats.inProgress },
+    { id: STATUS.RESOLVED, label: STATUS_META.resolved.label, count: stats.resolved },
+  ]
+  const applyFilter = (setter) => (value) => { setter(value); setVisible(PAGE_SIZE) }
+  const clearFilters = () => { setStatusFilter('all'); setCategoryFilter('all'); setSearch(''); setVisible(PAGE_SIZE) }
 
   const handleCreated = (created) => {
     setShowForm(false)
@@ -161,10 +190,42 @@ export default function UserDashboard() {
         <h2 className="text-lg font-bold text-slate-900">My requests</h2>
         {!loading && requests.length > 0 && (
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-            {requests.length} {requests.length === 1 ? 'request' : 'requests'}
+            {filtersActive ? `${filtered.length} of ${requests.length}` : `${requests.length} ${requests.length === 1 ? 'request' : 'requests'}`}
           </span>
         )}
       </div>
+
+      {/* Filters */}
+      {!loading && requests.length > 0 && (
+        <div className="mb-5 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <StatusPills options={pillOptions} value={statusFilter} onChange={applyFilter(setStatusFilter)} />
+          <div className="grid gap-3 sm:grid-cols-[1fr_14rem_auto]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => applyFilter(setSearch)(e.target.value)}
+                placeholder="Search by reference, place or details"
+                aria-label="Search my requests"
+                className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+            <select
+              value={categoryFilter}
+              onChange={(e) => applyFilter(setCategoryFilter)(e.target.value)}
+              aria-label="Filter by category"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            >
+              <option value="all">All categories</option>
+              {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+            {filtersActive && (
+              <Button variant="outline" onClick={clearFilters}><X className="h-4 w-4" aria-hidden="true" /> Clear</Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <Spinner />
@@ -174,9 +235,16 @@ export default function UserDashboard() {
           message="Report your first problem and track it here."
           action={<Button onClick={() => setShowForm(true)}><Plus className="h-4 w-4" aria-hidden="true" /> New request</Button>}
         />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="No matching requests"
+          message="Nothing matches your filters. Try a different status or search."
+          action={<Button variant="outline" onClick={clearFilters}>Clear filters</Button>}
+        />
       ) : (
+        <>
         <ul className="space-y-3">
-          {requests.map((r, i) => {
+          {shown.map((r, i) => {
             const category = categoryOf(r.category)
             const accent = STATUS_META[r.status]?.dot ?? STATUS_META.pending.dot
             return (
@@ -207,6 +275,13 @@ export default function UserDashboard() {
             )
           })}
         </ul>
+        {filtered.length > shown.length && (
+          <div className="mt-5 flex flex-col items-center gap-2">
+            <Button variant="outline" onClick={() => setVisible((n) => n + PAGE_SIZE)}>Show more ({filtered.length - shown.length} remaining)</Button>
+            <p className="text-xs text-slate-500">Showing {shown.length} of {filtered.length}</p>
+          </div>
+        )}
+        </>
       )}
 
       {showForm && (

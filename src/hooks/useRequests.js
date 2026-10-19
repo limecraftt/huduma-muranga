@@ -1,49 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { requestService } from '../services/requestService'
-
-/** How often an open dashboard checks for new or changed requests. */
-const REFRESH_MS = 30_000
+import { useLiveList } from './useLiveList'
 
 /**
  * Loads service requests.
  *   useRequests()        -> every request (admin, landing page stats)
  *   useRequests(userId)  -> only that citizen's requests
- * Refreshes by itself every 30 seconds and whenever the tab becomes visible again,
- * so an admin sees new requests without reloading the page.
+ * Stays up to date by itself (see useLiveList).
  * Returns { requests, loading, error, reload }.
  */
 export function useRequests(userId) {
-  const [requests, setRequests] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    try {
-      setRequests(userId ? await requestService.listForUser(userId) : await requestService.list())
-      setError('')
-    } catch (err) {
-      setError(err.message || 'Could not load requests.')
-    } finally {
-      setLoading(false)
-    }
-  }, [userId])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
-  }, [load])
-
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === 'visible') load()
-    }
-    const timer = setInterval(refresh, REFRESH_MS)
-    document.addEventListener('visibilitychange', refresh)
-    return () => {
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', refresh)
-    }
-  }, [load])
-
-  return { requests, loading, error, reload: load }
+  const fetchRequests = useCallback(
+    () => (userId ? requestService.listForUser(userId) : requestService.list()),
+    [userId],
+  )
+  const { items, loading, error, reload } = useLiveList(fetchRequests, 'Could not load requests.')
+  return { requests: items, loading, error, reload }
 }
