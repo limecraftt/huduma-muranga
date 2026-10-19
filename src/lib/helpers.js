@@ -33,8 +33,7 @@ export const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 
 /**
  * Reads an image file and returns a resized JPEG data URL.
- * The mock backend uses localStorage (~5MB), so photos are shrunk first.
- * With Supabase Storage, upload the original File instead.
+ * Photos are shrunk before upload to save bandwidth and storage.
  */
 export function fileToResizedDataUrl(file, maxSize = 900, quality = 0.75) {
   return new Promise((resolve, reject) => {
