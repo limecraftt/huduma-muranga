@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { LogIn, Mail } from 'lucide-react'
+import { LogIn, Mail, ShieldCheck } from 'lucide-react'
 import { Alert, Button, Field, Spinner } from '../components/ui'
 import PasswordInput from '../components/PasswordInput'
 import { useAuth } from '../context/auth'
 import { isValidEmail } from '../lib/helpers'
+
+/** Demo administrator account for assessors. Remove this (and the card below) once marking is over. */
+const DEMO_ADMIN = { email: 'hudumaadmin@gmail.com', password: 'Township2030' }
 
 /** Login page: centred card with a green title bar (same layout idea as the county portal). */
 export default function Login() {
@@ -85,6 +88,20 @@ export default function Login() {
             </p>
           </form>
         </div>
+
+        {/* Demo admin access for assessors */}
+        <aside className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm">
+          <p className="flex items-center gap-2 font-semibold text-brand-800">
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Assessor demo: administrator access
+          </p>
+          <dl className="mt-3 space-y-1 text-slate-700">
+            <div className="flex flex-wrap gap-x-2"><dt className="font-medium">Email:</dt><dd className="break-all font-mono text-xs leading-5">{DEMO_ADMIN.email}</dd></div>
+            <div className="flex flex-wrap gap-x-2"><dt className="font-medium">Password:</dt><dd className="font-mono text-xs leading-5">{DEMO_ADMIN.password}</dd></div>
+          </dl>
+          <Button type="button" variant="outline" size="sm" className="mt-3 w-full" onClick={() => { setForm(DEMO_ADMIN); setErrors({}); setFormError('') }}>
+            Fill in admin login
+          </Button>
+        </aside>
       </div>
     </div>
   )
