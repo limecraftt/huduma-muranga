@@ -17,15 +17,12 @@ const prefersReducedMotion = () =>
 /** True once the element has scrolled into view (and stays true). */
 function useInView(threshold = 0.15) {
   const ref = useRef(null)
-  const [inView, setInView] = useState(false)
+  // Old browsers without IntersectionObserver just show everything straight away
+  const [inView, setInView] = useState(() => typeof IntersectionObserver === 'undefined')
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    if (!('IntersectionObserver' in window)) {
-      setInView(true)
-      return
-    }
+    if (!el || inView) return
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -37,7 +34,7 @@ function useInView(threshold = 0.15) {
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [threshold])
+  }, [threshold, inView])
 
   return [ref, inView]
 }
@@ -62,13 +59,10 @@ function Reveal({ children, delay = 0, className = '' }) {
 function CountUp({ value, duration = 1000 }) {
   const [ref, inView] = useInView(0.4)
   const [n, setN] = useState(0)
+  const instant = !value || prefersReducedMotion()
 
   useEffect(() => {
-    if (!inView) return
-    if (prefersReducedMotion() || !value) {
-      setN(value)
-      return
-    }
+    if (!inView || instant) return
     let raf
     const start = performance.now()
     const tick = (now) => {
@@ -78,9 +72,9 @@ function CountUp({ value, duration = 1000 }) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [inView, value, duration])
+  }, [inView, instant, value, duration])
 
-  return <span ref={ref}>{n}</span>
+  return <span ref={ref}>{instant ? value : n}</span>
 }
 
 /** Citizen view: own requests, a "new request" form and status tracking. */

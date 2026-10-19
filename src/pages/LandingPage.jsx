@@ -48,15 +48,12 @@ const prefersReducedMotion = () =>
 /** True once the element has scrolled into view (and stays true). */
 function useInView(threshold = 0.15) {
   const ref = useRef(null)
-  const [inView, setInView] = useState(false)
+  // Old browsers without IntersectionObserver just show everything straight away
+  const [inView, setInView] = useState(() => typeof IntersectionObserver === 'undefined')
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    if (!('IntersectionObserver' in window)) {
-      setInView(true)
-      return
-    }
+    if (!el || inView) return
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -68,7 +65,7 @@ function useInView(threshold = 0.15) {
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [threshold])
+  }, [threshold, inView])
 
   return [ref, inView]
 }
