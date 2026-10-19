@@ -7,7 +7,7 @@ A web application that lets residents of **Murang'a County** report public servi
 
 ---
 
-## For assessors: try it in 2 minutes
+## try it in 2 minutes
 
 | Role | How to get in |
 | --- | --- |
@@ -220,4 +220,4 @@ The project was tested manually against the live deployment:
 
 ## Author
 
-**CJ**, Murang'a County, Kenya. Built as a coursework project for the Public Service Request System assignment.
+**Mutahi Charles Maina, Murang'a County, Kenya. Built as a project for the Public Service Request System assignment.
