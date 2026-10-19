@@ -2,11 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, ChevronRight, Clock, ClipboardList, Hourglass, ShieldCheck, X } from 'lucide-react'
 import RequestDetails from '../components/RequestDetails'
 import TipsPanel from '../components/TipsPanel'
-import { Alert, EmptyState, Spinner, StatCard, StatusBadge } from '../components/ui'
-import { STATUS_FLOW, STATUS_META, SUB_COUNTIES } from '../data/constants'
+import { Alert, Button, EmptyState, Spinner, StatCard, StatusBadge } from '../components/ui'
+import { STATUS, STATUS_META, SUB_COUNTIES } from '../data/constants'
 import { useRequests } from '../hooks/useRequests'
 import { categoryOf, fieldClass, formatDate } from '../lib/helpers'
 import { computeStats } from '../services/mockApi'
+
+/** Requests that still need work; everything else is history. */
+const LIVE_STATUSES = [STATUS.PENDING, STATUS.IN_PROGRESS]
+/** How many requests to show at once, so the page never gets overwhelmingly long. */
+const PAGE_SIZE = 8
 
 /* ---------- Small visual helpers (animation only, no app logic) ---------- */
 
@@ -91,14 +96,35 @@ function GrowBar({ percent, className = '', delay = 0 }) {
 /** Admin view: all requests, analytics, filters and status updates. */
 export default function AdminDashboard() {
   const { requests, loading, error, reload } = useRequests()
+  const [tab, setTab] = useState('live') // 'live' | 'history'
   const [statusFilter, setStatusFilter] = useState('all')
   const [subCountyFilter, setSubCountyFilter] = useState('all')
+  const [visible, setVisible] = useState(PAGE_SIZE)
   const [selected, setSelected] = useState(null)
 
   const stats = useMemo(() => computeStats(requests), [requests])
-  const filtered = requests.filter(
-    (r) => (statusFilter === 'all' || r.status === statusFilter) && (subCountyFilter === 'all' || r.subCounty === subCountyFilter),
+
+  // Live = pending / in progress (newest first). History = resolved (most recently resolved first).
+  const { liveRequests, historyRequests } = useMemo(
+    () => ({
+      liveRequests: requests.filter((r) => LIVE_STATUSES.includes(r.status)),
+      historyRequests: requests.filter((r) => r.status === STATUS.RESOLVED).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),
+    }),
+    [requests],
   )
+
+  const isHistory = tab === 'history'
+  const filtered = (isHistory ? historyRequests : liveRequests).filter(
+    (r) => (isHistory || statusFilter === 'all' || r.status === statusFilter) && (subCountyFilter === 'all' || r.subCounty === subCountyFilter),
+  )
+  const shown = filtered.slice(0, visible)
+
+  // Changing a filter or tab always starts the list from the top again
+  const changeTab = (next) => { setTab(next); setStatusFilter('all'); setVisible(PAGE_SIZE) }
+  const changeStatus = (value) => { setStatusFilter(value); setVisible(PAGE_SIZE) }
+  const changeSubCounty = (value) => { setSubCountyFilter(value); setVisible(PAGE_SIZE) }
+  const clearFilters = () => { setStatusFilter('all'); setSubCountyFilter('all'); setVisible(PAGE_SIZE) }
+
   const maxCategory = Math.max(1, ...stats.byCategory.map((c) => c.total))
   const filtersActive = statusFilter !== 'all' || subCountyFilter !== 'all'
   const openPct = stats.total ? (stats.open / stats.total) * 100 : 0
@@ -204,24 +230,51 @@ export default function AdminDashboard() {
         </Reveal>
       </div>
 
-      {/* Requests */}
-      <div className="mb-4 mt-10 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-slate-900">
-          All requests <span className="ml-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">{filtered.length}</span>
-        </h2>
+      {/* Requests: live work on top, resolved ones tucked away in History */}
+      <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div role="tablist" aria-label="Request list" className="grid grid-cols-2 rounded-xl bg-slate-200/70 p-1 sm:inline-grid sm:w-72">
+          {[
+            { id: 'live', label: 'Live', count: liveRequests.length },
+            { id: 'history', label: 'History', count: historyRequests.length },
+          ].map((t) => {
+            const active = tab === t.id
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => changeTab(t.id)}
+                className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+                  active ? 'bg-white text-brand-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {t.label}
+                <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-brand-100 text-brand-800' : 'bg-white/70 text-slate-500'}`}>{t.count}</span>
+              </button>
+            )
+          })}
+        </div>
+
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
-          <select aria-label="Filter by status" className={`${fieldClass()} !w-full sm:!w-auto`} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">All statuses</option>
-            {STATUS_FLOW.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-          </select>
-          <select aria-label="Filter by sub-county" className={`${fieldClass()} !w-full sm:!w-auto`} value={subCountyFilter} onChange={(e) => setSubCountyFilter(e.target.value)}>
+          {!isHistory && (
+            <select aria-label="Filter by status" className={`${fieldClass()} !w-full sm:!w-auto`} value={statusFilter} onChange={(e) => changeStatus(e.target.value)}>
+              <option value="all">All live</option>
+              {LIVE_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+            </select>
+          )}
+          <select
+            aria-label="Filter by sub-county"
+            className={`${fieldClass()} !w-full sm:!w-auto ${isHistory ? 'col-span-2 sm:col-span-1' : ''}`}
+            value={subCountyFilter}
+            onChange={(e) => changeSubCounty(e.target.value)}
+          >
             <option value="all">All sub-counties</option>
             {SUB_COUNTIES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           {filtersActive && (
             <button
               type="button"
-              onClick={() => { setStatusFilter('all'); setSubCountyFilter('all') }}
+              onClick={clearFilters}
               className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50 sm:col-span-1"
             >
               <X className="h-4 w-4" aria-hidden="true" /> Clear
@@ -230,15 +283,28 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <p className="mb-4 mt-4 text-sm text-slate-600">
+        {isHistory ? 'Resolved requests, most recently resolved first.' : 'Pending and in-progress requests that still need action.'}
+        <span className="ml-1 font-semibold text-slate-800">{filtered.length} {filtered.length === 1 ? 'request' : 'requests'}</span>
+      </p>
+
       {loading ? (
         <Spinner />
       ) : filtered.length === 0 ? (
-        <EmptyState title="No matching requests" message="Try a different filter." />
+        isHistory ? (
+          <EmptyState title="No resolved requests yet" message="Requests move here once you mark them as resolved." />
+        ) : (
+          <EmptyState
+            title={filtersActive || liveRequests.length ? 'No matching requests' : 'All caught up'}
+            message={filtersActive || liveRequests.length ? 'Try a different filter.' : 'There are no live requests right now. Resolved ones are in History.'}
+            action={filtersActive ? <Button variant="outline" onClick={clearFilters}>Clear filters</Button> : undefined}
+          />
+        )
       ) : (
         <>
           {/* Phones and small tablets: one card per request, no sideways scrolling */}
           <ul className="space-y-3 md:hidden">
-            {filtered.map((r, i) => {
+            {shown.map((r, i) => {
               const category = categoryOf(r.category)
               const accent = STATUS_META[r.status]?.dot ?? STATUS_META.pending.dot
               return (
@@ -260,7 +326,7 @@ export default function AdminDashboard() {
                       </div>
                       <p className="mt-3 text-sm text-slate-600">{r.location}, {r.subCounty}</p>
                       <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                        <span className="text-xs text-slate-500">{formatDate(r.createdAt)}</span>
+                        <span className="text-xs text-slate-500">{isHistory ? `Resolved ${formatDate(r.updatedAt)}` : formatDate(r.createdAt)}</span>
                         <span className="flex items-center gap-1 whitespace-nowrap">
                           <StatusBadge status={r.status} />
                           <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
@@ -274,51 +340,59 @@ export default function AdminDashboard() {
           </ul>
 
           {/* Tablets and desktops: full table */}
-          <Reveal className="hidden md:block">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Reference</th>
-                    <th className="px-4 py-3 font-semibold">Category</th>
-                    <th className="px-4 py-3 font-semibold">Location</th>
-                    <th className="px-4 py-3 font-semibold">Date</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3"><span className="sr-only">Action</span></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filtered.map((r) => {
-                    const category = categoryOf(r.category)
-                    return (
-                      <tr key={r.id} className="group transition-colors hover:bg-brand-50/50">
-                        <td className="px-4 py-3 font-medium text-slate-900">{r.ref}</td>
-                        <td className="px-4 py-3">
-                          <span className="flex items-center gap-2.5">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-all duration-300 group-hover:bg-brand-600 group-hover:text-white">
-                              <category.icon className="h-4 w-4" aria-hidden="true" />
-                            </span>
-                            {category.label}
+          <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Reference</th>
+                  <th className="px-4 py-3 font-semibold">Category</th>
+                  <th className="px-4 py-3 font-semibold">Location</th>
+                  <th className="px-4 py-3 font-semibold">{isHistory ? 'Resolved' : 'Date'}</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3"><span className="sr-only">Action</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {shown.map((r) => {
+                  const category = categoryOf(r.category)
+                  return (
+                    <tr key={r.id} className="group transition-colors hover:bg-brand-50/50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{r.ref}</td>
+                      <td className="px-4 py-3">
+                        <span className="flex items-center gap-2.5">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-all duration-300 group-hover:bg-brand-600 group-hover:text-white">
+                            <category.icon className="h-4 w-4" aria-hidden="true" />
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{r.location}, {r.subCounty}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(r.createdAt)}</td>
-                        <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => setSelected(r)}
-                            className="inline-flex items-center gap-1 rounded-md border border-brand-200 px-3 py-1.5 font-semibold text-brand-700 transition-all duration-300 hover:border-brand-600 hover:bg-brand-600 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                          >
-                            Manage <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true" />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                          {category.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{r.location}, {r.subCounty}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(isHistory ? r.updatedAt : r.createdAt)}</td>
+                      <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => setSelected(r)}
+                          className="inline-flex items-center gap-1 rounded-md border border-brand-200 px-3 py-1.5 font-semibold text-brand-700 transition-all duration-300 hover:border-brand-600 hover:bg-brand-600 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                        >
+                          {isHistory ? 'View' : 'Manage'} <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Keeps the page short: reveal more only when asked */}
+          {filtered.length > shown.length && (
+            <div className="mt-5 flex flex-col items-center gap-2">
+              <Button variant="outline" onClick={() => setVisible((n) => n + PAGE_SIZE)}>
+                Show more ({filtered.length - shown.length} remaining)
+              </Button>
+              <p className="text-xs text-slate-500">Showing {shown.length} of {filtered.length}</p>
             </div>
-          </Reveal>
+          )}
         </>
       )}
 
